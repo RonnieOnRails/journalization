@@ -1,7 +1,7 @@
-= Journalization (v0.1)
+= Journalization (v0.1.1)
 
 * Source: http://github.com/rOnnie974/journalization
-* Environment: created under Rails 2.1.0 and ruby 1.8.7
+* Environment: under Rails 2.2.3 and ruby 1.8.7, not tested above
 
 == Bugs & Feedback
 Bug reports and feedback are welcome via ronnie (dot) baret (at) gmail (dot) com
@@ -249,7 +249,7 @@ A journalization should be interesting at two different levels:
                                   ]
     end
   
-  Quick summary: the subresources key expect a, array of symbols (for
+  Quick summary: the subresources key expect an array of symbols (for
   subresources journalized in both cases) and/or hash (to choose explicitely
   an only one case).
   

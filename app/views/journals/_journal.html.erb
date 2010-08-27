@@ -1,9 +1,6 @@
-<%= "<div #{local_assigns[:has_parent] ? "style='display: none' class='journal_with_parent'" : ""}>" %>
-  <% unless local_assigns[:has_parent] %>
-    <h3><%= "#{"By " + get_identifier("actor", journal) + " - " if journal.actor} #{time_ago_in_words(journal.created_at).capitalize} ago" %></h3>
-  <% end %>
-  
-  <ul>
-    <%= render(:partial => "journals/journal_line", :collection => get_lines_with_paperclip_management(journal.journal_lines)) %>
-  <ul>
-</div>
+<% has_parent = local_assigns[:has_parent] %>
+
+<% content_tag :div, :style => (has_parent ? 'display: none' : nil), :class => (has_parent ? 'journal_with_parent' : nil) do %>
+  <%= content_tag(:h3, get_title(journal)) unless has_parent %>
+  <%= content_tag :ul, render(:partial => "journals/journal_line", :collection => get_lines_with_paperclip_management(journal.journal_lines)) %>
+<% end %>

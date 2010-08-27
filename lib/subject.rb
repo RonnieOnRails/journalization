@@ -23,8 +23,6 @@ module Journalization
             raise ArgumentError, "journalize expected at least one of the following params -> :attributes, :attachments, :subresources, :identifier_method"
           end
           
-          belongs_to_associations = self.reflect_on_all_associations(:belongs_to)
-
           if params.include?(:attributes)
             message = ":attributes expected a symbol or an array of symbols"
             if params[:attributes].instance_of?(Array) && params[:attributes].any?
@@ -42,8 +40,9 @@ module Journalization
             self.journalized_attributes.each do |attribute|
               raise NoMethodError, "undefined attribute or method '#{attribute}' for #{self.name}" unless self.column_names.include?(attribute.to_s)
               
-              belongs_to_associations.each do |a|
-                foreign_key = (a.options[:foreign_key] ? a.options[:foreign_key] : a.class_name.underscore + "_id")
+              self.reflect_on_all_associations(:belongs_to).each do |a|
+                foreign_key   = a.options[:foreign_key]
+                foreign_key ||= a.class_name.underscore + "_id"
                 self.journalized_belongs_to_attributes[attribute] = a.class_name.underscore if attribute.to_s == foreign_key
               end
             end
@@ -138,14 +137,16 @@ module Journalization
               
               def update_journalization_actor
                 if Journalization.const_defined?("ActorClassName") && !Journalization::ActorClassName.nil? && self.last_journal.respond_to?(:actor) && self.last_journal.actor
-                  actor = self.last_journal.actor
+                  actor = self.last_journal.actor(true)
                   actor_identifier = actor.journal_identifier
                   actor_class_identifier_method = actor.class.journal_identifier_method
-                  actor.journalization_record if actor_class_identifier_method && (!actor_identifier || actor.send(actor_class_identifier_method) != actor_identifier.new_value)
+                  actor.journalization_record(true) if !actor_identifier || actor.send(actor_class_identifier_method) != actor_identifier.new_value
                 end
               end
 
-              def journalization_record
+              def journalization_record(without_actor=false)
+                @without_actor = without_actor
+                
                 self.something_journalized = false
                 
                 [self.class.journalized_attributes, self.class.journalized_attachments].each do |array|
@@ -252,7 +253,7 @@ module Journalization
               def init_journal
                 self.last_journal = Journal.create(:journalized_type => self.class.name, :journalized_id => self.id) do |j|
                   if Journalization.const_defined?("ActorClassName") && !Journalization::ActorClassName.nil? && j.respond_to?(:actor)
-                    j.actor = Journalization::ActorClassName.constantize.journalization_actor_object
+                    j.actor = Journalization::ActorClassName.constantize.journalization_actor_object unless @without_actor
                   end
                 end
               end

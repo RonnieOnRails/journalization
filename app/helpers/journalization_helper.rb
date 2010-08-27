@@ -1,28 +1,31 @@
 module JournalizationHelper
   def display_journals_list(journals_subject)
-    html = "<div id=\'journals_list\'>"
-    html << render(:partial => "journals/journal", :collection => journals_subject.journals_with_lines)
-    html << "</div>"
+    content_tag :div, render(:partial => "journals/journal", :collection => journals_subject.journals_with_lines), :id => "journals_list"
   end
   
   def render_collection_changes_for(journal_line)
-    property = journal_line.journal.journalized_type.constantize.journalized_belongs_to_attributes[journal_line.property.to_sym]
-    old_value = YAML.load(journal_line.old_value) if journal_line.old_value
-    new_value = YAML.load(journal_line.new_value) if journal_line.new_value
+    klass               = journal_line.journal.journalized_type.constantize
+  
+    belongs_to_property = journal_line.journal.journalized_type.constantize.journalized_belongs_to_attributes[journal_line.property.to_sym]
     
-    if property
-      property   = property.camelize
+    old_value           = YAML.load(journal_line.old_value) if journal_line.old_value
+    new_value           = YAML.load(journal_line.new_value) if journal_line.new_value
+    
+    if belongs_to_property
+      property   = belongs_to_property.camelize
       created_at = journal_line.journal.created_at
       
       old_value = get_identifier("belongs_to", [property, old_value, created_at]) unless old_value.blank?
       new_value = get_identifier("belongs_to", [property, new_value, created_at]) unless new_value.blank?
       
+      property = klass.human_attribute_name(property.underscore)
+      
       if old_value.blank? && !new_value.blank?
-        html = journal_li(journal_strong(property) + " added: " + new_value)
+        html = journal_li(journal_strong(property) + " #{get_translation("added", :initialization)}: " + new_value)
       elsif !old_value.blank? && new_value.blank?
-        html = journal_li(journal_strong(property) + " " + old_value + " removed")
+        html = journal_li(journal_strong(property) + " " + old_value + " #{get_translation("removed", :one_removal)}")
       else
-        html = journal_li(journal_strong(property) + " changed from " + old_value + " to " + new_value)
+        html = journal_li(journal_strong(property) + " " + get_translation("changed from " + old_value + " to " + new_value, :changes, {:old_value => old_value, :new_value => new_value}))
       end
     else
       property = journal_line.property
@@ -43,7 +46,7 @@ module JournalizationHelper
         [destroyed_objects, created_objects].each do |array|
           if array.any?
             several = array.size > 1
-            html << "<li>#{journal_strong(several ? property.camelize : property.camelize.singularize)} #{array == destroyed_objects ? 'removed' : 'added'}: " 
+            html << "<li>#{journal_strong(klass.human_attribute_name(several ? property : property.singularize))} #{array == destroyed_objects ? (several ? get_translation("removed", :several_removals) : get_translation("removed", :one_removal)) : (several ? get_translation("added", :several_additions) : get_translation("added", :one_addition))}: " 
             array.each do |object|
               journal_line.property_id = object
               html << get_identifier("subresource", journal_line)
@@ -57,7 +60,7 @@ module JournalizationHelper
           if object
             journal_line.property_id = object
             unless object == new_value && journal_line.journal.journal_lines.detect {|l| l.property == journal_line.property && l.property_id == object}
-              html << journal_li("#{journal_strong(property.camelize)} #{object == old_value ? 'removed' : 'added'}")
+              html << journal_li("#{journal_strong(klass.human_attribute_name(property))} #{object == old_value ? get_translation("removed", :one_removal) : get_translation("added", :one_addition)}")
             end
           end
         end
@@ -68,24 +71,30 @@ module JournalizationHelper
   
   def render_changes_for(journal_line)
     property = journal_line.property
+    klass    = journal_line.journal.journalized_type.constantize
     
-    property.capitalize! unless has_subresource?(journal_line)
+    unless has_subresource?(journal_line)
+      property = klass.human_attribute_name(property)
+    end
+    
     old_value = journal_line.old_value
     new_value = journal_line.new_value
     
     if has_subresource?(journal_line)
-      subresource_class_name = (plural?(property) ? property.singularize : property).capitalize
+      subresource_class_name = (plural?(property) ? property.singularize : property).camelize
       is_first = journal_line.referenced_journal == Journal.find_for(subresource_class_name, journal_line.property_id).first
       
-      html = journal_strong(subresource_class_name) + get_identifier("subresource", journal_line) + " #{is_first ? 'added' : 'modified'}"
-      html << " (" + link_to_function("Détails", "Effect.toggle(this.next(), 'slide'); if(this.next().style.display == 'none') {this.innerHTML = 'Fermer'} else {this.innerHTML = 'Détails'}") + ")"
+      subresource_name = klass.human_attribute_name(subresource_class_name.underscore)
+      
+      html = journal_strong(subresource_name) + get_identifier("subresource", journal_line) + " #{is_first ? get_translation("added", :one_addition) : get_translation("modified", :modification)}"
+      html << " (" + link_to_function("#{get_translation("Show details", :show_details)}", "Effect.toggle(this.next(), 'slide'); if(this.next().style.display == 'none') {this.innerHTML = '#{get_translation("Close", :hide_details)}'} else {this.innerHTML = '#{get_translation("Show details", :show_details)}'}") + ")"
       html << render(:partial => "journals/journal", :object => journal_line.referenced_journal, :locals => {:has_parent => true})
     elsif !old_value.blank? && !new_value.blank?
-      html = journal_strong(property) + " changed from " + journal_em(old_value) + " to " + journal_em(new_value)
+      html = journal_strong(property) + " " + get_translation("changed from " + journal_em(old_value) + " to " + journal_em(new_value), :changes, {:old_value => journal_em(old_value), :new_value => journal_em(new_value)} )
     elsif !old_value.blank? && new_value.blank?
-      html = journal_strong(property) + " " + journal_em(old_value) + " removed"
+      html = journal_strong(property) + " " + journal_em(old_value) + " #{get_translation("removed", :one_removal)}"
     elsif old_value.blank? && !new_value.blank?
-      html = journal_strong(property) + " added: " + journal_em(new_value)
+      html = journal_strong(property) + " #{get_translation("added", :initialization)}: " + journal_em(new_value)
     end
     
     return journal_li(html)
@@ -96,6 +105,10 @@ module JournalizationHelper
     klass = journal_line.journal.journalized_type.camelize.constantize
     
     klass.journalized_subresources[:has_one].include?(property.to_sym) || klass.journalized_subresources[:has_many].include?(property.to_sym) || klass.journalized_belongs_to_attributes.include?(property.to_sym)
+  end
+  
+  def render_journal_line(journal_line)
+    journal_line.property_id.nil? && has_subresource?(journal_line) ? render_collection_changes_for(journal_line) : render_changes_for(journal_line)
   end
   
   def get_identifier(type, params)
@@ -136,7 +149,7 @@ module JournalizationHelper
         old_identifier = journal_em(old_journalized_identifier.new_value)
 
         old_identifier = "\"#{old_identifier}\"" unless type == "actor"
-        identifier = "#{old_identifier} (currently known as #{last_identifier})"
+        identifier = old_identifier + " (" + get_translation("currently known as #{last_identifier}", :current_identifier, :identifier => last_identifier) + ")"
       else
         identifier = last_identifier
       end
@@ -154,6 +167,26 @@ module JournalizationHelper
     end
       
     return journal_lines
+  end
+  
+  def get_title(journal)
+    author = content_tag :span, :class => "journal_author" do
+      get_translation("#{"By " + get_identifier("actor", journal)}", :author, :author => get_identifier("actor", journal)) if journal.actor
+    end
+    
+    time_distance = content_tag :span, :class => "journal_time_distance", :title => defined?(I18n) ? l(journal.created_at) : journal.created_at.strftime("%A, %B %d, %Y at %H:%M") do
+      content = get_translation("#{time_ago_in_words(journal.created_at)} ago", :time_distance, :time_distance => time_ago_in_words(journal.created_at))
+      content.capitalize! unless journal.actor
+      content
+    end
+    
+    return journal.actor ? "#{author}, #{time_distance}" : time_distance
+  end
+  
+  # This method permits to manage projects which Rails version is under 2.2 (without I18n)
+  # OPTIMIZE me to avoid repetition, default values are the same as those in lib/locale/en.yml
+  def get_translation(default, key, interpolations = {})
+    return defined?(I18n) ? t("journalization.#{key}", interpolations.merge(:default => default)) : default
   end
   
   def journal_em(text, options = {})
