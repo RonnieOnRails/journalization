@@ -43,7 +43,11 @@ module Journalization
               self.reflect_on_all_associations(:belongs_to).each do |a|
                 foreign_key   = a.options[:foreign_key]
                 foreign_key ||= a.class_name.underscore + "_id"
-                self.journalized_belongs_to_attributes[attribute] = a.class_name.underscore if attribute.to_s == foreign_key
+                
+                if attribute.to_s == foreign_key
+                  self.journalized_belongs_to_attributes[attribute] = a.class_name.underscore
+                  break
+                end
               end
             end
           end
