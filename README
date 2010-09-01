@@ -402,3 +402,11 @@ to perform a save on your ActiveRecord object to journalize them.
 Journalization was created during the Osirails project:
 - http://github.com/spidou/osirails
 - http://osirails.spidou.com/wiki
+
+Thanks to Mathieu FONTAINE (aka spidou) for the original idea and his great 
+help in specifications and development.
+
+Thanks to Julien MORILLE (aka Falc0) for his help during the plugin
+development start.
+
+Thanks to the whole Osirails project team for the support.
