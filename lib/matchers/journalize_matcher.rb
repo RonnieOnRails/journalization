@@ -155,8 +155,13 @@ module Journalization
             @subject.journalized_attributes.each do |attribute|
               
               @subject.reflect_on_all_associations(:belongs_to).each do |a|
-                foreign_key = (a.options[:foreign_key] ? a.options[:foreign_key] : a.class_name.underscore + "_id")
-                expected_journalized_belongs_to_attributes[attribute] = a.class_name.underscore if attribute.to_s == foreign_key
+                foreign_key = (a.options[:foreign_key] ? a.options[:foreign_key] : a.name.to_s + "_id")
+                if attribute.to_s == foreign_key
+                  expected_journalized_belongs_to_attributes[attribute]              = {}
+                  expected_journalized_belongs_to_attributes[attribute][:name]       = a.name.to_s 
+                  expected_journalized_belongs_to_attributes[attribute][:class_name] = a.class_name 
+                  break
+                end
               end
             end
             

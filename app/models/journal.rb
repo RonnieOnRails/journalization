@@ -18,7 +18,7 @@
 class Journal < ActiveRecord::Base
   belongs_to :journalized, :polymorphic => true
 
-  has_many   :journal_lines, :order => "property"
+  has_many   :journal_lines
   has_one    :referenced_journal_line, :class_name => "JournalLine", :foreign_key => "referenced_journal_id"
   has_one    :journal_identifier
   

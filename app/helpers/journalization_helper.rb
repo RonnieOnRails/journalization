@@ -29,13 +29,13 @@ module JournalizationHelper
     new_value           = YAML.load(journal_line.new_value) if journal_line.new_value
     
     if belongs_to_property
-      property   = belongs_to_property.camelize
+      class_name = belongs_to_property[:class_name]
       created_at = journal_line.journal.created_at
       
-      old_value = get_identifier("belongs_to", [property, old_value, created_at]) unless old_value.blank?
-      new_value = get_identifier("belongs_to", [property, new_value, created_at]) unless new_value.blank?
+      old_value = get_identifier("belongs_to", [class_name, old_value, created_at]) unless old_value.blank?
+      new_value = get_identifier("belongs_to", [class_name, new_value, created_at]) unless new_value.blank?
       
-      property = klass.human_attribute_name(property.underscore)
+      property = klass.human_attribute_name(belongs_to_property[:name])
       
       if old_value.blank? && !new_value.blank?
         html = journal_li(journal_strong(property) + " #{get_translation("added", :initialization)}: " + new_value)
@@ -98,14 +98,18 @@ module JournalizationHelper
     new_value = journal_line.new_value
     
     if has_subresource?(journal_line)
-      subresource_class_name = (plural?(property) ? property.singularize : property).camelize
+      subresource_class_name = klass.reflect_on_association(property.to_sym).class_name
       is_first = journal_line.referenced_journal == Journal.find_for(subresource_class_name, journal_line.property_id).first
       
-      subresource_name = klass.human_attribute_name(subresource_class_name.underscore)
+      subresource_camelized_name = (plural?(property) ? property.singularize : property).camelize
+      subresource_name           = klass.human_attribute_name(subresource_camelized_name.underscore)
       
       html = journal_strong(subresource_name) + get_identifier("subresource", journal_line) + " #{is_first ? get_translation("added", :one_addition) : get_translation("modified", :modification)}"
-      html << " (" + link_to_function("#{get_translation("Show details", :show_details)}", "Effect.toggle(this.next(), 'slide'); if(this.next().style.display == 'none') {this.innerHTML = '#{get_translation("Close", :hide_details)}'} else {this.innerHTML = '#{get_translation("Show details", :show_details)}'}") + ")"
-      html << render(:partial => "journals/journal", :object => journal_line.referenced_journal, :locals => {:has_parent => true})
+      
+      unless journal_line.referenced_journal.journal_lines.empty?
+        html << " (" + link_to_function("#{get_translation("Show details", :show_details)}", "Effect.toggle(this.next(), 'slide'); if(this.next().style.display == 'none') {this.innerHTML = '#{get_translation("Close", :hide_details)}'} else {this.innerHTML = '#{get_translation("Show details", :show_details)}'}") + ")"
+        html << render(:partial => "journals/journal", :object => journal_line.referenced_journal, :locals => {:has_parent => true})
+      end
     elsif !old_value.blank? && !new_value.blank?
       html = journal_strong(property) + " " + get_translation("changed from " + journal_em(old_value) + " to " + journal_em(new_value), :changes, {:old_value => journal_em(old_value), :new_value => journal_em(new_value)} )
     elsif !old_value.blank? && new_value.blank?
@@ -165,7 +169,7 @@ module JournalizationHelper
       if old_journalized_identifier && old_journalized_identifier.new_value != journalized_identifier.new_value
         old_identifier = journal_em(old_journalized_identifier.new_value)
 
-        old_identifier = "\"#{old_identifier}\"" unless type == "actor"
+        old_identifier = " \"#{old_identifier}\"" unless type == "actor"
         identifier = old_identifier + " (" + get_translation("currently known as #{last_identifier}", :current_identifier, :identifier => last_identifier) + ")"
       else
         identifier = last_identifier

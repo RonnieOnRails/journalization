@@ -36,7 +36,6 @@ module Journalization
           self.journalized_belongs_to_attributes = {} unless self.journalized_belongs_to_attributes
 
           if !params.include?(:attributes) && !params.include?(:attachments) && !params.include?(:subresources) && !params.include?(:identifier_method)
-              self.journalized_attributes == [] && self.journalized_attachments == [] && self.journalized_subresources = {:has_many => {}, :has_one => {}} && self.journal_identifier_method.nil?
             raise ArgumentError, "journalize expected at least one of the following params -> :attributes, :attachments, :subresources, :identifier_method"
           end
           
@@ -59,10 +58,12 @@ module Journalization
               
               self.reflect_on_all_associations(:belongs_to).each do |a|
                 foreign_key   = a.options[:foreign_key]
-                foreign_key ||= a.class_name.underscore + "_id"
+                foreign_key ||= a.name.to_s + "_id"
                 
                 if attribute.to_s == foreign_key
-                  self.journalized_belongs_to_attributes[attribute] = a.class_name.underscore
+                  self.journalized_belongs_to_attributes[attribute]              = {}
+                  self.journalized_belongs_to_attributes[attribute][:name]       = a.name.to_s
+                  self.journalized_belongs_to_attributes[attribute][:class_name] = a.class_name
                   break
                 end
               end
@@ -253,7 +254,7 @@ module Journalization
                   end
                 end
                 
-                if self.last_journal && self.parent_infos && self.parent_infos.size == 2
+                if self.last_journal && self.last_journal.journal_lines.any? && self.parent_infos && self.parent_infos.size == 2
                   parent        = self.parent_infos[0]
                   resource_type = self.parent_infos[1]
 
