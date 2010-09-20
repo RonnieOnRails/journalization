@@ -323,7 +323,7 @@ class JournalizationTest < ActiveRecordTestCase
         end
         
         should "have an additional journal with a line which property is \"photo_file_size\", old_value is previous photo_file_size and new_value is its new photo_file_size" do
-          assert_not_nil @a_person.journals.last.journal_lines.detect { |l| l.property == "photo_file_size" && l.old_value == @a_person_old_photo_file_size && l.new_value == @a_person.photo_file_size.to_s}
+          assert_not_nil @a_person.journals.last.journal_lines.detect { |l| l.property == "photo_file_size" && l.old_value == @a_person_old_photo_file_size && l.new_value == @a_person.photo_file_size}
         end
         
       end

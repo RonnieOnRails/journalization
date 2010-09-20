@@ -24,9 +24,9 @@ module JournalizationHelper
     klass               = journal_line.journal.journalized_type.constantize
   
     belongs_to_property = journal_line.journal.journalized_type.constantize.journalized_belongs_to_attributes[journal_line.property.to_sym]
-    
-    old_value           = YAML.load(journal_line.old_value) if journal_line.old_value
-    new_value           = YAML.load(journal_line.new_value) if journal_line.new_value
+
+    old_value = journal_line.old_value
+    new_value = journal_line.new_value
     
     if belongs_to_property
       class_name = belongs_to_property[:class_name]
@@ -94,8 +94,8 @@ module JournalizationHelper
       property = klass.human_attribute_name(property)
     end
     
-    old_value = journal_line.old_value
-    new_value = journal_line.new_value
+    old_value = get_formatted(journal_line.old_value)
+    new_value = get_formatted(journal_line.new_value)
     
     if has_subresource?(journal_line)
       subresource_class_name = klass.reflect_on_association(property.to_sym).class_name
@@ -208,6 +208,24 @@ module JournalizationHelper
   # OPTIMIZE me to avoid repetition, default values are the same as those in lib/locale/en.yml
   def get_translation(default, key, interpolations = {})
     return defined?(I18n) ? t("journalization.#{key}", interpolations.merge(:default => default)) : default
+  end
+  
+  # This method permits to manage projects which Rails version is under 2.2 (without I18n)
+  # OPTIMIZE me to avoid repetition, default values are the same as those in lib/locale/en.yml
+  def get_localization(value, locale_format = :default, strftime_format = "%A, %B %d, %Y at %H:%M")
+    return defined?(I18n) ? l(value, :format => locale_format) : value.strftime(strftime_format)
+  end
+  
+  def get_formatted(value)
+    if value.class == TrueClass
+      return get_translation("Yes", :bool_true)
+    elsif value.class == FalseClass
+      return get_translation("No", :bool_false)
+    elsif [Date, DateTime, Time].include?(value.class)
+      return get_localization(value)
+    else
+      return value
+    end
   end
   
   def journal_em(text, options = {})

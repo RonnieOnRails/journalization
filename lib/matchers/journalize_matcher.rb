@@ -145,6 +145,7 @@ module Journalization
           end
 
           def has_expected_journal_identifier_method?
+            raise ArgumentError, "Procs are not supported by should_journalize as :identifier_method" if @params[:identifier_method].instance_of?(Proc)
             expected = @params[:identifier_method] == @subject.journal_identifier_method
             @message = expected_collection_message("journal_identifier_method", @params[:identifier_method], @subject.journal_identifier_method) unless expected
             expected

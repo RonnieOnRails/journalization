@@ -20,5 +20,36 @@ class JournalLine < ActiveRecord::Base
   belongs_to :referenced_journal, :class_name => "Journal", :foreign_key => "referenced_journal_id"
 
   validates_presence_of :journal
+  
+  def old_value
+    cast(self[:old_value], self.property_type)
+  end
+  
+  def new_value
+    cast(self[:new_value], self.property_type)
+  end
+  
+  def cast(value, type)
+    return if value.blank?
+    case type
+      when "boolean"
+        return (value == "true" ? true : false)
+      when "integer"
+        return value.to_i
+      when "float"
+        return value.to_f
+      when "decimal"
+        return value.to_d
+      when "datetime"
+        return value.to_datetime
+      when "time"
+        return value.to_time
+      when "date"
+        return value.to_date
+      when "serialized_array"
+        return YAML.load(value)
+      else
+        return value.to_s
+    end
+  end
 end
-
